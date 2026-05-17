@@ -37,18 +37,28 @@ class Huevo:
                                             #las coordenadas en el eje y
 
 
-def funcion_triangular(a,m,b,x): #a (inicio de la función), mitad (pico máximo), b (fin del intervalo) y x(valor en el que está la característica)
+def funcion_gamma(a,m,x):
     if(x<=a): return 0
+    if(x>a and x<m): return (x-a)/(m-a)
+    return 1
+
+def funcion_L(a,m,x): #es la inversa de Gamma
+    if(x<=a): return 1
+    if(x>a and x<m): return (m-x)/(m-a)
+    return 0
+
+def funcion_triangular(a,m,b,x): #a (inicio de la función), mitad (pico máximo), b (fin del intervalo) y x(valor en el que está la característica)
+    #if(x<=a): return 0
     if(a<x and x<=m):return (x-a)/(m-a)
     if(m<x and x<=b):return (b-x)/(b-m)
-    if(x>b): return 0
+    return 0
 
 def funcion_trapezoidal(a,b,c,d,x): #a (inicio de la función), b (inicio del pico máximo), c (fin del pico máximo), d (fin de la función) y x (valor en el que está la característica)
-    if(x<=a): return 0
+    #if(x<=a): return 0
     if(a<x and x<=b):return (x-a)/(b-a)
     if(b<x and x<=c):return 1
     if(c<x and x<=d):return (d-x)/(b-c)
-    if(x>d): return 0
+    return 0
         
 
 
@@ -59,7 +69,25 @@ def funcion_trapezoidal(a,b,c,d,x): #a (inicio de la función), b (inicio del pi
 # promediar, o calcular con todas **termina siendo m^n  donde n son las categorias/reglas y n las características del huevo**)
 # Y esta es la parte intermedia o dónde consultamos nuestra base de conocimiento
 
+rangos_L = {
+    "suciedad_area":[0.5,0.6], #a partir de 0.5 cm², está sucio
+    "suciedad_proporcional":[0.125,0.25], #a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
+    "fisura":[0.05,0.1], # a partir de un grosor de 0.1 mm es una fisura grande
+    "rugosidad":[0.1,0.6] # después de los 6 micrómetros ya es una rugosidad considerable
+}
 
+rangos_triangulares = {
+    "solidos_en_yema":[55,70,85],
+    "excentricidad":[]
+
+}
+
+rangos_trapezoidales = {
+    "excentricidad":[0,72,76,100],
+    "densidad_relativa":[1.035,1.070,1.085,1.120],
+    "excentricidad":[65,72,76,83],
+    
+}
 
 
 # *** Salida *** #
