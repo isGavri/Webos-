@@ -35,6 +35,22 @@ class Huevo:
                                             #los colores de cada pixel en RGB
         self.matriz_alturas = matriz_alturas #dividiendo la superficie en irregularidades, 
                                             #las coordenadas en el eje y
+
+
+def funcion_triangular(a,m,b,x): #a (inicio de la función), mitad (pico máximo), b (fin del intervalo) y x(valor en el que está la característica)
+    if(x<=a): return 0
+    if(a<x and x<=m):return (x-a)/(m-a)
+    if(m<x and x<=b):return (b-x)/(b-m)
+    if(x>b): return 0
+
+def funcion_trapezoidal(a,b,c,d,x): #a (inicio de la función), b (inicio del pico máximo), c (fin del pico máximo), d (fin de la función) y x (valor en el que está la característica)
+    if(x<=a): return 0
+    if(a<x and x<=b):return (x-a)/(b-a)
+    if(b<x and x<=c):return 1
+    if(c<x and x<=d):return (d-x)/(b-c)
+    if(x>d): return 0
+
+
         
 
 
