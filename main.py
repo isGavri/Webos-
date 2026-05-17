@@ -49,8 +49,6 @@ def funcion_trapezoidal(a,b,c,d,x): #a (inicio de la función), b (inicio del pi
     if(b<x and x<=c):return 1
     if(c<x and x<=d):return (d-x)/(b-c)
     if(x>d): return 0
-
-
         
 
 
@@ -60,6 +58,8 @@ def funcion_trapezoidal(a,b,c,d,x): #a (inicio de la función), b (inicio del pi
 # ej. 0.3 de pequeño, 0. 7 de mediano, 0.5 de grande. (Aquí podríamos hacer varias cosas quedarnos con el más significativo,
 # promediar, o calcular con todas **termina siendo m^n  donde n son las categorias/reglas y n las características del huevo**)
 # Y esta es la parte intermedia o dónde consultamos nuestra base de conocimiento
+
+
 
 
 # *** Salida *** #
