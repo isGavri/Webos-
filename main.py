@@ -196,28 +196,36 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
 # Y esta es la parte intermedia o dónde consultamos nuestra base de conocimiento
 
 rangos_gamma = {
-    "suciedad_area":[0.5,0.8], #a partir de 0.5 cm², está sucio
-    "suciedad_proporcional":[0.125,0.25], #a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
-    "grosor_fisura":[0.05,0.1], # a partir de un grosor de 0.1 mm, es una fisura grande
-    "rugosidad":[1,6], # después de los 6 micrómetros ya es una rugosidad muy alta
-    "contaminacion_interior": [0,3], # mientras menos porcentaje de contaminación, mejor
-    "desviacion_color": [0,1], # mientras menos desviaciones estándar, mejor
-    
-
-    "suciedad_plumas":[0,9], #a partir de 9 de plumas por casillero, ya es muy sucio y no se acepta
+    "suciedad_area": [0.5, 0.8],  # a partir de 0.5 cm², está sucio
+    "suciedad_proporcional": [
+        0.125,
+        0.25,
+    ],  # a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
+    "grosor_fisura": [
+        0.05,
+        0.1,
+    ],  # a partir de un grosor de 0.1 mm, es una fisura grande
+    "rugosidad": [1, 6],  # después de los 6 micrómetros ya es una rugosidad muy alta
+    "contaminacion_interior": [
+        0,
+        3,
+    ],  # mientras menos porcentaje de contaminación, mejor
+    "desviacion_color": [0, 1],  # mientras menos desviaciones estándar, mejor
+    "suciedad_plumas": [
+        0,
+        9,
+    ],  # a partir de 9 de plumas por casillero, ya es muy sucio y no se acepta
 }
 
 rangos_triangulares = {
-    "solidos_en_yema":[55,70,85], # idealmente, se concentra en un 70 %
-    "distancia_camara_aire": [3,6,9] # idealmente, unos 6 mm
-
+    "solidos_en_yema": [55, 70, 85],  # idealmente, se concentra en un 70 %
+    "distancia_camara_aire": [3, 6, 9],  # idealmente, unos 6 mm
 }
 
 rangos_trapezoidales = {
-    "densidad_relativa":[1.035,1.070,1.085,1.120],
-    "excentricidad":[65,72,76,83],
-    "grosor":[0.250,0.341,0.367,0.458] # preferiblemente, entre 0.341,0.367 mm
-    
+    "densidad_relativa": [1.035, 1.070, 1.085, 1.120],
+    "excentricidad": [65, 72, 76, 83],
+    "grosor": [0.250, 0.341, 0.367, 0.458],  # preferiblemente, entre 0.341,0.367 mm
 }
 
 
@@ -312,39 +320,48 @@ def clasificador_huevo_completo(huevo):
 
 
 if __name__ == "__main__":
-    import random
     import csv
 
-    for i in range(1, 11):  # Probamos con 10 huevos aleatorios
-        with open('Egg Grade Dataset.csv',newline='') as archivo:
-            reader = csv.DictReader(archivo,delimiter=',')
-            huevos = []
-            for row in reader:
-                huevos.append(row)
+    filename = "Egg Grade Dataset Final.csv"
+    
+    try:
+        with open(filename, mode="r", encoding="utf-8") as file:
+            # Usamos DictReader para acceder a las columnas por nombre convenientemente
+            reader = csv.DictReader(file)
+            dataset = list(reader)
+
+        print(f"--- Procesando {len(dataset[:10])} huevos del dataset ---")
+        
+        for i, row in enumerate(dataset[:10], 1):
+            # Instanciamos el Huevo con los datos del CSV convirtiéndolos al tipo adecuado
+            # Nota: Algunos atributos que no están detallados en el CSV se inicializan con valores por defecto o aproximaciones
+            h = Huevo(
+                area_mancha=float(row["Stain_Area"]),
+                grosor_fisura=float(row["Eggshell_fissure"]),
+                presencia_derrames=row["Leaks_presence"].strip().lower() == "true",
+                interior_limpio=row["Internal_immaculacy"].strip().lower() == "true",
+                ancho=float(row["Diameter"]),
+                alto=float(row["Height"]),
+                profundidad=float(row["Diameter"]),  # Asumimos profundidad similar al diámetro
+                densidad_relativa=float(row["Specific_gravity"]),
+                area_moteado=float(row["Motted_area"]),
+                distancia_camara_interna=float(row["Internal_chamber_distance"]),
+                matriz_colores=[float(row["Color_uniformity"])],
+                matriz_alturas=[float(row["Average_rugosity"])],
+                grosor_cascara=float(row["Eggshell_thickness"]),
+            )
+
+            centroide, clase = clasificador_huevo_completo(h)
+            
+            # Cálculo del índice de forma para el reporte
+            indice_forma = (h.ancho / h.alto) if h.alto > 0 else 0
+            
+            print(
+                f"Huevo {i:02d}: Grosor={h.grosor_cascara:.3f}mm, Manchas={h.area_mancha:.2f}cm², "
+                f"Indice Forma={indice_forma:.2f} -> {clase} (Centroide: {centroide:.2f})"
+            )
                 
-
-
-
-        h = Huevo(
-            area_mancha=random.uniform(0.0, 1.0),
-            grosor_fisura=random.uniform(0, 150),
-            presencia_derrames=random.choice(
-                [True, False, False, False]
-            ),  # 25% prob derrame
-            interior_limpio=random.choice([True, True, True, False]),  # 25% prob sucio
-            ancho=random.uniform(4.0, 5.0),
-            alto=random.uniform(5.5, 7.0),
-            profundidad=5.0,
-            densidad_relativa=1.075,
-            area_moteado=0.0,
-            distancia_camara_interna=3.0,
-            matriz_colores=[],
-            matriz_alturas=[],
-            grosor_cascara=random.uniform(0.30, 0.40),
-        )
-
-        centroide, clase = clasificador_huevo_completo(h)
-        print(
-            f"Huevo {i:02d}: Grosor={h.grosor_cascara:.3f}mm, Manchas={h.area_mancha:.2f}cm², "
-            f"Forma={h.ancho/h.alto:.2f} -> {clase} (Centroide: {centroide:.2f})"
-        )
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo '{filename}'.")
+    except Exception as e:
+        print(f"Error durante el procesamiento: {e}")

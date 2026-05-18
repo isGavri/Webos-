@@ -6,6 +6,8 @@ if __name__ == "__main__":
             print(row["Diameter "])"""
     import csv
 
-    with open('Egg Grade Dataset.csv', newline='') as csv:
-        
-    
+    with open("Egg Grade Dataset Final.csv", mode="r", encoding="utf-8") as file:
+        data_table = list(csv.reader(file))
+
+    for row in data_table:
+        print(row)
