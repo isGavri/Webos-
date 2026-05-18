@@ -37,9 +37,10 @@ class Huevo:
         distancia_camara_interna,
         matriz_colores,
         matriz_alturas,
+        grosor_cascara,  # Nueva variable para el grosor de la cáscara (mm)
     ):
         self.area_mancha = (
-            area_mancha  # el área total de las manchas superficiales (en milímetros)
+            area_mancha  # el área total de las manchas superficiales (en cm²)
         )
         self.grosor_fisura = (
             grosor_fisura  # el grosor de la fisura externa más ancha (en micrómetros)
@@ -66,6 +67,7 @@ class Huevo:
             matriz_alturas  # dividiendo la superficie en irregularidades,
         )
         # las coordenadas en el eje y
+        self.grosor_cascara = grosor_cascara
 
 
 def funcion_gamma(a, m, x):
@@ -131,18 +133,23 @@ def funcion_trapezoidal(
     if b < x and x <= c:
         return 1
     if c < x and x <= d:
-        return (d - x) / (d - c) # Corregido b-c por d-c para consistencia matemática
+        return (d - x) / (d - c)  # Corregido b-c por d-c para consistencia matemática
     return 0
 
 
 # --- Funciones de Pertenencia de Salida (Escala 0 a 10) ---
+# NOTE: Sujeto a modificación (hay que definirlo bien pero ocupamos probarlo)
+
+
 def membresia_salida_C(x):
     """Clase C (Desecho): Centrada en 2."""
     return funcion_triangular(0, 2, 4, x)
 
+
 def membresia_salida_B(x):
     """Clase B (Procesar): Centrada en 5."""
     return funcion_triangular(3, 5, 7, x)
+
 
 def membresia_salida_A(x):
     """Clase A (Consumo): Centrada en 8."""
@@ -156,7 +163,8 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
     """
     suma_productos = 0.0
     suma_alturas = 0.0
-    
+
+    # Para que haga 100 iteraciones, pero quede entre 0 y 10
     paso = 0.1
     x = 0.0
     while x <= 10.0:
@@ -164,19 +172,21 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
         mu_A = min(membresia_salida_A(x), activacion_A)
         mu_B = min(membresia_salida_B(x), activacion_B)
         mu_C = min(membresia_salida_C(x), activacion_C)
-        
+
         # Agregación de las áreas (Máximo)
         mu_total = max(mu_A, mu_B, mu_C)
-        
+
         if mu_total > 0:
             suma_productos += x * mu_total
             suma_alturas += mu_total
         x += paso
-        
+
     if suma_alturas == 0:
         return 5.0  # Valor neutral por defecto
-        
-    return suma_productos / suma_alturas
+
+    return (
+        suma_productos / suma_alturas
+    )  # se supone que retorna un valor entre 0 y 10 que nos da a que clase pertenece
 
 
 # *** Base de conocimiento *** #
@@ -213,3 +223,115 @@ rangos_trapezoidales = {
 # A, B y C, dónde es A para consumo immediato, B procesamiento y C deshechos.
 # La fórmula es sumatoria(x_i * u(x_i)) / sumatoria(u(x_i)) u es función de pertenencia y x_i es la posición en la que se evalúa en el rango definido (0-100)
 # de la función.
+
+
+# Primera Simulación tomando solo 3 variables para calibrar
+def clasificar_calidad_difusa(huevo):
+    """
+    Calsificación difusa para clasificar el huevo basado en 3 variables:
+    """
+    # fuzificacion
+
+    # Grosor de cáscara (mm) [0.341, 0.367]
+    g_delgado = funcion_L(
+        rangos_trapezoidales["grosor"][1],
+        rangos_trapezoidales["grosor"][0],
+        huevo.grosor_cascara,
+    )
+    g_normal = funcion_trapezoidal(0.33, 0.341, 0.367, 0.38, huevo.grosor_cascara)
+    g_grueso = funcion_gamma(0.367, 0.39, huevo.grosor_cascara)
+
+    # forma (ancho/alto) [72%, 76%]
+    indice_forma = (huevo.ancho / huevo.alto) if huevo.alto > 0 else 0
+    f_largo = funcion_L(0.65, 0.72, indice_forma)
+    f_ideal = funcion_trapezoidal(0.70, 0.72, 0.76, 0.78, indice_forma)
+    f_redondo = funcion_gamma(0.76, 0.83, indice_forma)
+
+    # manchas (cm²) <= 0.5
+    m_limpio = funcion_L(0.1, 0.5, huevo.area_mancha)
+    m_manchado = funcion_triangular(0.4, 0.6, 0.8, huevo.area_mancha)
+    m_sucio = funcion_gamma(0.7, 1.0, huevo.area_mancha)
+
+    # reglas - min es para conjuncion y max para disyuncion
+
+    # si g_normal y f_ideal y m_limpio -> Clase A
+    r1 = min(g_normal, f_ideal, m_limpio)
+
+    # si g_delgado o m_manchado -> Clase B
+    r2 = max(g_delgado, m_manchado)
+
+    # si m_sucio o f_largo f_redondo -> Clase C
+    r3 = max(m_sucio, f_largo, f_redondo)
+
+    # aqui se supone que se unen las reglas para cada clase
+    act_A = r1
+    act_B = r2
+    act_C = r3
+
+    # defusificacion
+    centroide = calcular_centroide(act_A, act_B, act_C)
+
+    if centroide < 3.5:
+        return centroide, "Clase C (Desecho)"
+    elif centroide < 6.5:
+        return centroide, "Clase B (Procesar)"
+    else:
+        return centroide, "Clase A (Consumo Inmediato)"
+
+
+def es_descarte_inmediato(huevo):
+    """
+    Retorna True si el huevo debe ser Clase C sin pasar por lógica difusa.
+    """
+    # Presencia de derrames
+    if huevo.presencia_derrames:
+        return True, "Derrame detectado"
+
+    # Interior contaminado o con inclusiones
+    if not huevo.interior_limpio:
+        return True, "Interior no apto (sangre/microbios)"
+
+    # Fisuras graves (mayor a 0.1 mm = 100 micrómetros)
+    if huevo.grosor_fisura > 100:
+        return True, "Fisura grave detectada"
+
+    return False, ""
+
+
+def clasificador_huevo_completo(huevo):
+    """descarte rápido y la lógica difusa."""
+
+    descarte, motivo = es_descarte_inmediato(huevo)
+    if descarte:
+        return 2.0, f"Clase C (Desecho) - {motivo}"
+
+    return clasificar_calidad_difusa(huevo)
+
+
+if __name__ == "__main__":
+    import random
+
+    for i in range(1, 11):  # Probamos con 10 huevos aleatorios
+        h = Huevo(
+            area_mancha=random.uniform(0.0, 1.0),
+            grosor_fisura=random.uniform(0, 150),
+            presencia_derrames=random.choice(
+                [True, False, False, False]
+            ),  # 25% prob derrame
+            interior_limpio=random.choice([True, True, True, False]),  # 25% prob sucio
+            ancho=random.uniform(4.0, 5.0),
+            alto=random.uniform(5.5, 7.0),
+            profundidad=5.0,
+            densidad_relativa=1.075,
+            area_moteado=0.0,
+            distancia_camara_interna=3.0,
+            matriz_colores=[],
+            matriz_alturas=[],
+            grosor_cascara=random.uniform(0.30, 0.40),
+        )
+
+        centroide, clase = clasificador_huevo_completo(h)
+        print(
+            f"Huevo {i:02d}: Grosor={h.grosor_cascara:.3f}mm, Manchas={h.area_mancha:.2f}cm², "
+            f"Forma={h.ancho/h.alto:.2f} -> {clase} (Centroide: {centroide:.2f})"
+        )
