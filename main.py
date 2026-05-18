@@ -199,7 +199,7 @@ rangos_gamma = {
     "suciedad_area":[0.5,0.8], #a partir de 0.5 cm², está sucio
     "suciedad_proporcional":[0.125,0.25], #a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
     "grosor_fisura":[0.05,0.1], # a partir de un grosor de 0.1 mm, es una fisura grande
-    "rugosidad":[0.1,0.6], # después de los 6 micrómetros ya es una rugosidad muy alta
+    "rugosidad":[1,6], # después de los 6 micrómetros ya es una rugosidad muy alta
     "contaminacion_interior": [0,3], # mientras menos porcentaje de contaminación, mejor
     "desviacion_color": [0,1], # mientras menos desviaciones estándar, mejor
     
@@ -213,7 +213,7 @@ rangos_triangulares = {
 
 }
 
-rangos_trapezoidales = {-
+rangos_trapezoidales = {
     "densidad_relativa":[1.035,1.070,1.085,1.120],
     "excentricidad":[65,72,76,83],
     "grosor":[0.250,0.341,0.367,0.458] # preferiblemente, entre 0.341,0.367 mm
@@ -313,8 +313,18 @@ def clasificador_huevo_completo(huevo):
 
 if __name__ == "__main__":
     import random
+    import csv
 
     for i in range(1, 11):  # Probamos con 10 huevos aleatorios
+        with open('Egg Grade Dataset.csv',newline='') as archivo:
+            reader = csv.DictReader(archivo,delimiter=',')
+            huevos = []
+            for row in reader:
+                huevos.append(row)
+                
+
+
+
         h = Huevo(
             area_mancha=random.uniform(0.0, 1.0),
             grosor_fisura=random.uniform(0, 150),
