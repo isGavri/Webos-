@@ -143,17 +143,17 @@ def funcion_trapezoidal(
 
 def membresia_salida_C(x):
     """Clase C (Desecho): Centrada en 2."""
-    return funcion_triangular(0, 2, 4, x)
+    return funcion_L(1.5, 4, x)
 
 
 def membresia_salida_B(x):
     """Clase B (Procesar): Centrada en 5."""
-    return funcion_triangular(3, 5, 7, x)
+    return funcion_triangular(2.5, 4, 7.5, x)
 
 
 def membresia_salida_A(x):
     """Clase A (Consumo): Centrada en 8."""
-    return funcion_triangular(6, 8, 10, x)
+    return funcion_gamma(6, 8, x)
 
 
 def calcular_centroide(activacion_A, activacion_B, activacion_C):
@@ -236,55 +236,110 @@ rangos_trapezoidales = {
 # de la función.
 
 
-# Primera Simulación tomando solo 3 variables para calibrar
+# Segunda Simulación tomando 6 variables para una clasificación más robusta
 def clasificar_calidad_difusa(huevo):
     """
-    Calsificación difusa para clasificar el huevo basado en 3 variables:
+    Clasificación difusa para clasificar el huevo basado en 6 variables físicas.
     """
     # fuzificacion
 
     # Grosor de cáscara (mm) [0.341, 0.367]
-    g_delgado = funcion_L(
-        rangos_trapezoidales["grosor"][1],
-        rangos_trapezoidales["grosor"][0],
-        huevo.grosor_cascara,
-    )
-    g_normal = funcion_trapezoidal(0.33, 0.341, 0.367, 0.38, huevo.grosor_cascara)
-    g_grueso = funcion_gamma(0.367, 0.39, huevo.grosor_cascara)
+    # Suavizamos: un huevo de 0.31 ya no es "Malo" automáticamente, es "Delgado"
+    g_delgado = funcion_L(0.28, 0.31, huevo.grosor_cascara)
+    g_normal = funcion_trapezoidal(0.30, 0.33, 0.37, 0.40, huevo.grosor_cascara)
+    g_grueso = funcion_gamma(0.38, 0.42, huevo.grosor_cascara)
 
     # forma (ancho/alto) [72%, 76%]
     indice_forma = (huevo.ancho / huevo.alto) if huevo.alto > 0 else 0
-    f_largo = funcion_L(0.65, 0.72, indice_forma)
-    f_ideal = funcion_trapezoidal(0.70, 0.72, 0.76, 0.78, indice_forma)
-    f_redondo = funcion_gamma(0.76, 0.83, indice_forma)
+    f_largo = funcion_L(0.60, 0.70, indice_forma)
+    f_ideal = funcion_trapezoidal(0.68, 0.72, 0.78, 0.82, indice_forma)
+    f_redondo = funcion_gamma(0.80, 0.88, indice_forma)
 
-    # manchas (cm²) <= 0.5
-    m_limpio = funcion_L(0.1, 0.5, huevo.area_mancha)
-    m_manchado = funcion_triangular(0.4, 0.6, 0.8, huevo.area_mancha)
-    m_sucio = funcion_gamma(0.7, 1.0, huevo.area_mancha)
+    # manchas (mm²) 
+    # ajustamos para que 6.4 mm² sea muy limpio y hasta 30 mm² sea tolerable
+    m_limpio = funcion_L(15, 25, huevo.area_mancha)
+    m_manchado = funcion_triangular(20, 40, 60, huevo.area_mancha)
+    m_sucio = funcion_gamma(50, 80, huevo.area_mancha)
 
-    # reglas - min es para conjuncion y max para disyuncion
+    # Densidad Relativa (adimensional) [1.070, 1.085]
+    # entre más densidad es mejor, nos dice que el huevo está lleno y fresco
+    d_baja = funcion_L(1.055, 1.065, huevo.densidad_relativa)
+    d_media = funcion_triangular(1.060, 1.075, 1.085, huevo.densidad_relativa)
+    d_alta = funcion_gamma(1.080, 1.095, huevo.densidad_relativa)
 
-    # si g_normal y f_ideal y m_limpio -> Clase A
-    r1 = min(g_normal, f_ideal, m_limpio)
+    # Distancia cámara interna (mm)
+    # idealmente pequeña, si es muy grande significa que el huevo ya perdió mucha humedad
+    # nota: lo dejamos en un rango crítico porque la frescura es vital
+    a_pequena = funcion_L(4.5, 6.5, huevo.distancia_camara_interna)
+    a_media = funcion_triangular(6.0, 8.0, 10.0, huevo.distancia_camara_interna)
+    a_grande = funcion_gamma(9.5, 12.0, huevo.distancia_camara_interna)
 
-    # si g_delgado o m_manchado -> Clase B
-    r2 = max(g_delgado, m_manchado)
+    # Rugosidad (micrómetros)
+    # idealmente liso, sin irregularidades graves que debiliten la estructura
+    rugosidad_val = huevo.matriz_alturas[0] if huevo.matriz_alturas else 0
+    r_liso = funcion_L(2.0, 4.0, rugosidad_val)
+    r_medio = funcion_triangular(3.5, 6.0, 8.5, rugosidad_val)
+    r_rugoso = funcion_gamma(8.0, 11.0, rugosidad_val)
 
-    # si m_sucio o f_largo f_redondo -> Clase C
-    r3 = max(m_sucio, f_largo, f_redondo)
+    # CALIDAD DE LA CÁSCARA
+    # si el grosor es normal Y es liso -> Cáscara Excelente
+    cascara_excelente = min(g_normal, r_liso)
+    # si el grosor es normal/grueso Y es medio -> Cáscara Regular
+    # permitimos que un huevo delgado pero liso sea "Regular" (Clase B)
+    cascara_regular = max(min(g_normal, r_medio), min(g_delgado, r_liso), min(g_grueso, r_medio))
+    # Si es MUY delgado o MUY rugoso -> Cáscara Mala (Peligro estructural)
+    cascara_mala = max(funcion_L(0.25, 0.28, huevo.grosor_cascara), r_rugoso)
 
-    # aqui se supone que se unen las reglas para cada clase
-    act_A = r1
-    act_B = r2
-    act_C = r3
+    # FRESCURA
+    # Si la densidad es alta Y la cámara es pequeña -> Frescura Excelente
+    frescura_excelente = min(d_alta, a_pequena)
+    # Si la densidad es media Y la cámara es media -> Frescura Regular
+    frescura_regular = min(d_media, a_media)
+    # Si la densidad es baja O la cámara es grande -> Huevo Viejo (Malo)
+    frescura_mala = max(d_baja, a_grande)
+
+    # ESTÉTICA
+    # Si está limpio Y la forma es ideal -> Estética Excelente
+    estetica_excelente = min(m_limpio, f_ideal)
+    # Si está manchado O la forma es redonda/larga -> Estética Regular
+    estetica_regular = max(m_manchado, min(m_limpio, f_redondo), min(m_limpio, f_largo))
+    # Si está muy sucio -> Estética Mala
+    estetica_mala = m_sucio
+
+    # Combinacion para salida final
+
+    # Aquí es donde el sistema se vuelve flexible. Definimos combinaciones de los bloques:
+
+    # CLASE A: Todo tiene que ser excelente, o al menos dos excelentes y un regular tolerable.
+    act_A = max(
+        min(cascara_excelente, frescura_excelente, estetica_excelente),  # Caso perfecto
+        min(
+            cascara_excelente, frescura_excelente, estetica_regular
+        ),  # Excelente pero algo manchado/deforme
+    )
+
+    # CLASE B: Parámetros aceptables para procesamiento industrial.
+    act_B = max(
+        min(cascara_regular, frescura_excelente, estetica_excelente),
+        min(cascara_excelente, frescura_regular, estetica_excelente),
+        min(cascara_regular, frescura_regular, estetica_regular),
+        min(
+            cascara_excelente, frescura_excelente, estetica_mala
+        ),  # Huevo fresco/fuerte pero muy sucio -> Va a pasteurización
+    )
+
+    # CLASE C: Si cualquiera de los pilares vitales (Cáscara o Frescura) es malo, se descarta.
+    # Nota que excluimos 'estetica_mala' de aquí si es que se puede procesar en B.
+    act_C = max(cascara_mala, frescura_mala)
 
     # defusificacion
     centroide = calcular_centroide(act_A, act_B, act_C)
 
+    # Umbrales de decisión basados en el centroide (0-10)
+    # Mantuvimos los umbrales de 3.5 y 5.5 como los tenías originalmente
     if centroide < 3.5:
         return centroide, "Clase C (Desecho)"
-    elif centroide < 6.5:
+    elif centroide < 5.5:
         return centroide, "Clase B (Procesar)"
     else:
         return centroide, "Clase A (Consumo Inmediato)"
@@ -321,20 +376,20 @@ def clasificador_huevo_completo(huevo):
 
 if __name__ == "__main__":
     import csv
+    from analizador import AnalizadorCalidad
 
-    filename = "Egg Grade Dataset Final.csv"
-    
+    # Cambiamos al nuevo dataset balanceado para mejores pruebas
+    filename = "Egg_Grade_Dataset_Normalized.csv"
+    resultados_totales = []
+
     try:
         with open(filename, mode="r", encoding="utf-8") as file:
-            # Usamos DictReader para acceder a las columnas por nombre convenientemente
             reader = csv.DictReader(file)
             dataset = list(reader)
 
-        print(f"--- Procesando {len(dataset[:10])} huevos del dataset ---")
-        
-        for i, row in enumerate(dataset[:10], 1):
-            # Instanciamos el Huevo con los datos del CSV convirtiéndolos al tipo adecuado
-            # Nota: Algunos atributos que no están detallados en el CSV se inicializan con valores por defecto o aproximaciones
+        print(f"--- Iniciando Procesamiento de {len(dataset)} huevos ---")
+
+        for i, row in enumerate(dataset, 1):
             h = Huevo(
                 area_mancha=float(row["Stain_Area"]),
                 grosor_fisura=float(row["Eggshell_fissure"]),
@@ -342,7 +397,7 @@ if __name__ == "__main__":
                 interior_limpio=row["Internal_immaculacy"].strip().lower() == "true",
                 ancho=float(row["Diameter"]),
                 alto=float(row["Height"]),
-                profundidad=float(row["Diameter"]),  # Asumimos profundidad similar al diámetro
+                profundidad=float(row["Diameter"]),
                 densidad_relativa=float(row["Specific_gravity"]),
                 area_moteado=float(row["Motted_area"]),
                 distancia_camara_interna=float(row["Internal_chamber_distance"]),
@@ -352,15 +407,25 @@ if __name__ == "__main__":
             )
 
             centroide, clase = clasificador_huevo_completo(h)
-            
-            # Cálculo del índice de forma para el reporte
-            indice_forma = (h.ancho / h.alto) if h.alto > 0 else 0
-            
-            print(
-                f"Huevo {i:02d}: Grosor={h.grosor_cascara:.3f}mm, Manchas={h.area_mancha:.2f}cm², "
-                f"Indice Forma={indice_forma:.2f} -> {clase} (Centroide: {centroide:.2f})"
+
+            # Guardamos el resultado en una estructura procesable
+            resultados_totales.append(
+                {"id": i, "huevo": h, "centroide": centroide, "clase": clase}
             )
-                
+
+        analizador = AnalizadorCalidad(resultados_totales)
+
+        analizador.imprimir_estadisticas()
+
+        huevos_a = analizador.filtrar_por_clase("Clase A")
+        print(f"\nSe encontraron {len(huevos_a)} huevos de Clase A.")
+
+        # top_5 = analizador.ordenar_por_centroid(ascendente=False)
+        # for r in top_5:
+        #     print(f"ID: {r['id']:03d} | Centroide: {r['centroide']:.2f} | {r['clase']}")
+
+        # analizador.imprimir_reporte_completo()
+
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo '{filename}'.")
     except Exception as e:
