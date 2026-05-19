@@ -255,8 +255,8 @@ def clasificar_calidad_difusa(huevo):
     f_ideal = funcion_trapezoidal(0.68, 0.72, 0.78, 0.82, indice_forma)
     f_redondo = funcion_gamma(0.80, 0.88, indice_forma)
 
-    # manchas (mm²) 
-    # ajustamos para que 6.4 mm² sea muy limpio y hasta 30 mm² sea tolerable
+    # manchas (mm)
+    # ajustamos para que 6.4 mm^2 sea muy limpio y hasta 30  sea tolerable
     m_limpio = funcion_L(15, 25, huevo.area_mancha)
     m_manchado = funcion_triangular(20, 40, 60, huevo.area_mancha)
     m_sucio = funcion_gamma(50, 80, huevo.area_mancha)
@@ -281,16 +281,35 @@ def clasificar_calidad_difusa(huevo):
     r_medio = funcion_triangular(3.5, 6.0, 8.5, rugosidad_val)
     r_rugoso = funcion_gamma(8.0, 11.0, rugosidad_val)
 
-    # CALIDAD DE LA CÁSCARA
+    # Moteado (cm) - manchas blanquecinas por humedad
+    # idealmente poco o nada
+    moteado_limpio = funcion_L(2.0, 5.0, huevo.area_moteado)
+    moteado_medio = funcion_triangular(4.0, 7.0, 10.0, huevo.area_moteado)
+    moteado_sucio = funcion_gamma(8.0, 12.0, huevo.area_moteado)
+
+    # Uniformidad de Color
+    # un valor bajo significa un color muy parejo
+    color_excelente = funcion_L(
+        1.0, 2.5, huevo.matriz_colores[0] if huevo.matriz_colores else 0
+    )
+    color_regular = funcion_triangular(
+        2.0, 4.0, 6.0, huevo.matriz_colores[0] if huevo.matriz_colores else 0
+    )
+    color_manchado = funcion_gamma(
+        5.0, 8.0, huevo.matriz_colores[0] if huevo.matriz_colores else 0
+    )
+
+    # cascara
     # si el grosor es normal Y es liso -> Cáscara Excelente
     cascara_excelente = min(g_normal, r_liso)
     # si el grosor es normal/grueso Y es medio -> Cáscara Regular
-    # permitimos que un huevo delgado pero liso sea "Regular" (Clase B)
-    cascara_regular = max(min(g_normal, r_medio), min(g_delgado, r_liso), min(g_grueso, r_medio))
+    cascara_regular = max(
+        min(g_normal, r_medio), min(g_delgado, r_liso), min(g_grueso, r_medio)
+    )
     # Si es MUY delgado o MUY rugoso -> Cáscara Mala (Peligro estructural)
     cascara_mala = max(funcion_L(0.25, 0.28, huevo.grosor_cascara), r_rugoso)
 
-    # FRESCURA
+    # frescyra
     # Si la densidad es alta Y la cámara es pequeña -> Frescura Excelente
     frescura_excelente = min(d_alta, a_pequena)
     # Si la densidad es media Y la cámara es media -> Frescura Regular
@@ -298,51 +317,51 @@ def clasificar_calidad_difusa(huevo):
     # Si la densidad es baja O la cámara es grande -> Huevo Viejo (Malo)
     frescura_mala = max(d_baja, a_grande)
 
-    # ESTÉTICA
-    # Si está limpio Y la forma es ideal -> Estética Excelente
-    estetica_excelente = min(m_limpio, f_ideal)
-    # Si está manchado O la forma es redonda/larga -> Estética Regular
-    estetica_regular = max(m_manchado, min(m_limpio, f_redondo), min(m_limpio, f_largo))
-    # Si está muy sucio -> Estética Mala
-    estetica_mala = m_sucio
-
-    # Combinacion para salida final
+    # aesthetics
+    # Si está limpio Y la forma es ideal Y el color es parejo -> Estética Excelente
+    estetica_excelente = min(m_limpio, f_ideal, color_excelente, moteado_limpio)
+    # Si está un poco manchado o el color varía un poco -> Estética Regular
+    estetica_regular = max(
+        m_manchado,
+        min(m_limpio, f_redondo),
+        min(m_limpio, f_largo),
+        color_regular,
+        moteado_medio,
+    )
+    # Si está muy sucio o con colores muy raros -> Estética Mala
+    estetica_mala = max(m_sucio, color_manchado, moteado_sucio)
 
     # Aquí es donde el sistema se vuelve flexible. Definimos combinaciones de los bloques:
 
-    # CLASE A: Todo tiene que ser excelente, o al menos dos excelentes y un regular tolerable.
+    # clase A
     act_A = max(
-        min(cascara_excelente, frescura_excelente, estetica_excelente),  # Caso perfecto
-        min(
-            cascara_excelente, frescura_excelente, estetica_regular
-        ),  # Excelente pero algo manchado/deforme
+        min(cascara_excelente, frescura_excelente, estetica_excelente),
+        min(cascara_excelente, frescura_excelente, estetica_regular),
     )
 
-    # CLASE B: Parámetros aceptables para procesamiento industrial.
+    # clase B
     act_B = max(
         min(cascara_regular, frescura_excelente, estetica_excelente),
         min(cascara_excelente, frescura_regular, estetica_excelente),
         min(cascara_regular, frescura_regular, estetica_regular),
-        min(
-            cascara_excelente, frescura_excelente, estetica_mala
-        ),  # Huevo fresco/fuerte pero muy sucio -> Va a pasteurización
+        min(cascara_excelente, frescura_excelente, estetica_mala),
     )
 
-    # CLASE C: Si cualquiera de los pilares vitales (Cáscara o Frescura) es malo, se descarta.
-    # Nota que excluimos 'estetica_mala' de aquí si es que se puede procesar en B.
+    # CLASE C
     act_C = max(cascara_mala, frescura_mala)
 
     # defusificacion
     centroide = calcular_centroide(act_A, act_B, act_C)
 
-    # Umbrales de decisión basados en el centroide (0-10)
-    # Mantuvimos los umbrales de 3.5 y 5.5 como los tenías originalmente
+    # Determinacion de la clase final (Manteniendo umbrales)
     if centroide < 3.5:
-        return centroide, "Clase C (Desecho)"
+        clase_str = "Clase C (Desecho)"
     elif centroide < 5.5:
-        return centroide, "Clase B (Procesar)"
+        clase_str = "Clase B (Procesar)"
     else:
-        return centroide, "Clase A (Consumo Inmediato)"
+        clase_str = "Clase A (Consumo Inmediato)"
+
+    return centroide, clase_str, (act_A, act_B, act_C)
 
 
 def es_descarte_inmediato(huevo):
@@ -369,7 +388,7 @@ def clasificador_huevo_completo(huevo):
 
     descarte, motivo = es_descarte_inmediato(huevo)
     if descarte:
-        return 2.0, f"Clase C (Desecho) - {motivo}"
+        return 2.0, f"Clase C (Desecho) - {motivo}", (0.0, 0.0, 1.0)
 
     return clasificar_calidad_difusa(huevo)
 
@@ -386,8 +405,6 @@ if __name__ == "__main__":
         with open(filename, mode="r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             dataset = list(reader)
-
-        print(f"--- Iniciando Procesamiento de {len(dataset)} huevos ---")
 
         for i, row in enumerate(dataset, 1):
             h = Huevo(
@@ -406,25 +423,21 @@ if __name__ == "__main__":
                 grosor_cascara=float(row["Eggshell_thickness"]),
             )
 
-            centroide, clase = clasificador_huevo_completo(h)
+            centroide, clase, membresias = clasificador_huevo_completo(h)
 
             # Guardamos el resultado en una estructura procesable
             resultados_totales.append(
-                {"id": i, "huevo": h, "centroide": centroide, "clase": clase}
+                {
+                    "id": i,
+                    "huevo": h,
+                    "centroide": centroide,
+                    "clase": clase,
+                    "membresias": membresias,
+                }
             )
 
         analizador = AnalizadorCalidad(resultados_totales)
-
-        analizador.imprimir_estadisticas()
-
-        huevos_a = analizador.filtrar_por_clase("Clase A")
-        print(f"\nSe encontraron {len(huevos_a)} huevos de Clase A.")
-
-        # top_5 = analizador.ordenar_por_centroid(ascendente=False)
-        # for r in top_5:
-        #     print(f"ID: {r['id']:03d} | Centroide: {r['centroide']:.2f} | {r['clase']}")
-
-        # analizador.imprimir_reporte_completo()
+        analizador.imprimir_reporte_completo()
 
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo '{filename}'.")
