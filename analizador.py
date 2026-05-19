@@ -40,11 +40,20 @@ class AnalizadorCalidad:
         header = f"{'ID':<4} | {'Centroide':<10} | {'Clase':<25} | {'μA':<6} | {'μB':<6} | {'μC':<6}"
         print(f"\n{header}")
         print("-" * len(header))
+        cantA = 0
+        cantB = 0
+        cantC = 0
         for r in self.resultados:
             mA, mB, mC = r["membresias"]
+            if(mA>0): cantA = cantA+1
+            if(mB>0): cantB = cantC+1
+            if(mB>0): cantC = cantC+1
             print(
                 f"{r['id']:03d}  | {r['centroide']:<10.2f} | {r['clase']:<25} | {mA:<6.2f} | {mB:<6.2f} | {mC:<6.2f}"
             )
+        print("Cantidad de huevos clase A: ",cantA)
+        print("Cantidad de huevos clase B: ",cantB)
+        print("Cantidad de huevos clase C: ",cantC)
 
     def imprimir_estadisticas(self):
         """Muestra un resumen estadistico de la ejecucion."""
