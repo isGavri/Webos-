@@ -16,7 +16,7 @@ class AnalizadorCalidad:
         self.resultados = resultados
 
     def ordenar_por_centroid(self, ascendente=False):
-        """Ordena la lista de resultados segun el valor del centroide."""
+        """Ordena la lista de resultados segun el valor del centroide"""
         return sorted(
             self.resultados, key=lambda x: x["centroide"], reverse=not ascendente
         )
@@ -37,7 +37,7 @@ class AnalizadorCalidad:
     # Necesita modificacion para que imprima la membresia de cada clase
     def imprimir_reporte_completo(self):
         """Imprime una tabla detallada con todos los resultados incluyendo membresias."""
-        header = f"{'ID':<4} | {'Centroide':<10} | {'Clase':<25} | {'μA':<6} | {'μB':<6} | {'μC':<6}"
+        header = f"{'ID':<4} | {'Centroide':<10}  | {'μA':<6} | {'μB':<6} | {'μC':<6} | {'Clase':<25}"
         print(f"\n{header}")
         print("-" * len(header))
         cantA = 0
@@ -45,15 +45,15 @@ class AnalizadorCalidad:
         cantC = 0
         for r in self.resultados:
             mA, mB, mC = r["membresias"]
-            if(mA>0): cantA = cantA+1
-            if(mB>0): cantB = cantC+1
-            if(mB>0): cantC = cantC+1
+            if mA > 0:
+                cantA = cantA + 1
+            if mB > 0:
+                cantB = cantC + 1
+            if mB > 0:
+                cantC = cantC + 1
             print(
-                f"{r['id']:03d}  | {r['centroide']:<10.2f} | {r['clase']:<25} | {mA:<6.2f} | {mB:<6.2f} | {mC:<6.2f}"
+                f"{r['id']:03d}  | {r['centroide']:<10.2f}  | {mA:<6.2f} | {mB:<6.2f} | {mC:<6.2f} | {r['clase']:<25}"
             )
-        print("Cantidad de huevos clase A: ",cantA)
-        print("Cantidad de huevos clase B: ",cantB)
-        print("Cantidad de huevos clase C: ",cantC)
 
     def imprimir_estadisticas(self):
         """Muestra un resumen estadistico de la ejecucion."""

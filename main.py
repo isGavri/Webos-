@@ -11,15 +11,15 @@
 # de membresía triangular o trapezoidal.
 
 
-class Casillero:
-    def __init__(self, matriz_huevos, cantidad_plumas):
-        self.matriz_huevos = (
-            matriz_huevos  # idealmente, que siempre sean 60 (es un arraylist de
-        )
-        # objetos tipo Huevo)
-        self.cantidad_plumas = (
-            cantidad_plumas  # cantidad de plumas dentro de la caja (en unidades)
-        )
+# class Casillero:
+#     def __init__(self, matriz_huevos, cantidad_plumas):
+#         self.matriz_huevos = (
+#             matriz_huevos  # idealmente, que siempre sean 60 (es un arraylist de
+#         )
+#         # objetos tipo Huevo)
+#         self.cantidad_plumas = (
+#             cantidad_plumas  # cantidad de plumas dentro de la caja (en unidades)
+#         )
 
 
 class Huevo:
@@ -142,24 +142,24 @@ def funcion_trapezoidal(
 
 
 def membresia_salida_C(x):
-    """Clase C (Desecho): Centrada en 2."""
+    """Clase C (Desecho): Centrada en 1.5"""
     return funcion_L(1.5, 4, x)
 
 
 def membresia_salida_B(x):
-    """Clase B (Procesar): Centrada en 5."""
+    """Clase B (Procesar): Centrada en 4"""
     return funcion_triangular(2.5, 4, 7.5, x)
 
 
 def membresia_salida_A(x):
-    """Clase A (Consumo): Centrada en 8."""
+    """Clase A (Consumo): Centrada en 8"""
     return funcion_gamma(6, 8, x)
 
 
 def calcular_centroide(activacion_A, activacion_B, activacion_C):
     """
-    Calcula el centroide de la figura agregada de las 3 clases (Mamdani).
-    activacion_A, activacion_B, activacion_C: niveles de activación de cada clase (0 a 1).
+    Calcula el centroide de las 3 clases
+    activacion_A, activacion_B, activacion_C: niveles de activación de cada clase (0 a 1)
     """
     suma_productos = 0.0
     suma_alturas = 0.0
@@ -168,7 +168,6 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
     paso = 0.1
     x = 0.0
     while x <= 10.0:
-        # Recorte de las funciones de salida (Mínimo)
         mu_A = min(membresia_salida_A(x), activacion_A)
         mu_B = min(membresia_salida_B(x), activacion_B)
         mu_C = min(membresia_salida_C(x), activacion_C)
@@ -182,7 +181,7 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
         x += paso
 
     if suma_alturas == 0:
-        return 5.0  # Valor neutral por defecto
+        return 0.0  # Valor neutral por defecto
 
     return (
         suma_productos / suma_alturas
@@ -195,51 +194,10 @@ def calcular_centroide(activacion_A, activacion_B, activacion_C):
 # promediar, o calcular con todas **termina siendo m^n  donde n son las categorias/reglas y n las características del huevo**)
 # Y esta es la parte intermedia o dónde consultamos nuestra base de conocimiento
 
-rangos_gamma = {
-    "suciedad_area": [0.5, 0.8],  # a partir de 0.5 cm², está sucio
-    "suciedad_proporcional": [
-        0.125,
-        0.25,
-    ],  # a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
-    "grosor_fisura": [
-        0.05,
-        0.1,
-    ],  # a partir de un grosor de 0.1 mm, es una fisura grande
-    "rugosidad": [1, 6],  # después de los 6 micrómetros ya es una rugosidad muy alta
-    "contaminacion_interior": [
-        0,
-        3,
-    ],  # mientras menos porcentaje de contaminación, mejor
-    "desviacion_color": [0, 1],  # mientras menos desviaciones estándar, mejor
-    "suciedad_plumas": [
-        0,
-        9,
-    ],  # a partir de 9 de plumas por casillero, ya es muy sucio y no se acepta
-}
 
-rangos_triangulares = {
-    "solidos_en_yema": [55, 70, 85],  # idealmente, se concentra en un 70 %
-    "distancia_camara_aire": [3, 6, 9],  # idealmente, unos 6 mm
-}
-
-rangos_trapezoidales = {
-    "densidad_relativa": [1.035, 1.070, 1.085, 1.120],
-    "excentricidad": [65, 72, 76, 83],
-    "grosor": [0.250, 0.341, 0.367, 0.458],  # preferiblemente, entre 0.341,0.367 mm
-}
-
-
-# *** Salida *** #
-# Defuzzificación, depende como hayamos elegido en el paso anterior continuamos aquí. El objetivo es clasificar en 3 clases,
-# A, B y C, dónde es A para consumo immediato, B procesamiento y C deshechos.
-# La fórmula es sumatoria(x_i * u(x_i)) / sumatoria(u(x_i)) u es función de pertenencia y x_i es la posición en la que se evalúa en el rango definido (0-100)
-# de la función.
-
-
-# Segunda Simulación tomando 6 variables para una clasificación más robusta
 def clasificar_calidad_difusa(huevo):
     """
-    Clasificación difusa para clasificar el huevo basado en 6 variables físicas.
+    Clasificación difusa para clasificar el huevo
     """
     # fuzificacion
 
@@ -393,12 +351,53 @@ def clasificador_huevo_completo(huevo):
     return clasificar_calidad_difusa(huevo)
 
 
+# rangos_gamma = {
+#     "suciedad_area": [0.5, 0.8],  # a partir de 0.5 cm², está sucio
+#     "suciedad_proporcional": [
+#         0.125,
+#         0.25,
+#     ],  # a partir de 1/8, está sucio (si el huevo es muy pequeño, 1/8 podrá ser menor que 0.5 cm² y, por lo tanto, estará sucio antes de los 0.5 cm²)
+#     "grosor_fisura": [
+#         0.05,
+#         0.1,
+#     ],  # a partir de un grosor de 0.1 mm, es una fisura grande
+#     "rugosidad": [1, 6],  # después de los 6 micrómetros ya es una rugosidad muy alta
+#     "contaminacion_interior": [
+#         0,
+#         3,
+#     ],  # mientras menos porcentaje de contaminación, mejor
+#     "desviacion_color": [0, 1],  # mientras menos desviaciones estándar, mejor
+#     "suciedad_plumas": [
+#         0,
+#         9,
+#     ],  # a partir de 9 de plumas por casillero, ya es muy sucio y no se acepta
+# }
+#
+# rangos_triangulares = {
+#     "solidos_en_yema": [55, 70, 85],  # idealmente, se concentra en un 70 %
+#     "distancia_camara_aire": [3, 6, 9],  # idealmente, unos 6 mm
+# }
+#
+# rangos_trapezoidales = {
+#     "densidad_relativa": [1.035, 1.070, 1.085, 1.120],
+#     "excentricidad": [65, 72, 76, 83],
+#     "grosor": [0.250, 0.341, 0.367, 0.458],  # preferiblemente, entre 0.341,0.367 mm
+# }
+#
+
+# *** Salida *** #
+# Defuzzificación, depende como hayamos elegido en el paso anterior continuamos aquí. El objetivo es clasificar en 3 clases,
+# A, B y C, dónde es A para consumo immediato, B procesamiento y C deshechos.
+# La fórmula es sumatoria(x_i * u(x_i)) / sumatoria(u(x_i)) u es función de pertenencia y x_i es la posición en la que se evalúa en el rango definido (0-100)
+# de la función.
+
+
 if __name__ == "__main__":
     import csv
     from analizador import AnalizadorCalidad
 
-    # Cambiamos al nuevo dataset balanceado para mejores pruebas
-    filename = "Egg_Grade_Dataset_Normalized.csv"
+    # filename = "Egg_Grade_Dataset_Normalized.csv"
+    filename = "Egg Grade Dataset Final.csv"
     resultados_totales = []
 
     try:
@@ -425,7 +424,6 @@ if __name__ == "__main__":
 
             centroide, clase, membresias = clasificador_huevo_completo(h)
 
-            # Guardamos el resultado en una estructura procesable
             resultados_totales.append(
                 {
                     "id": i,
@@ -438,6 +436,12 @@ if __name__ == "__main__":
 
         analizador = AnalizadorCalidad(resultados_totales)
         analizador.imprimir_reporte_completo()
+        analizador.imprimir_estadisticas()
+
+        ordencentroide = analizador.ordenar_por_centroid(ascendente=False)
+
+        for r in ordencentroide:
+            print(f"ID: {r['id']:03d} | Centroide: {r['centroide']:.2f} | {r['clase']}")
 
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo '{filename}'.")
